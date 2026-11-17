@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vite-plus/test";
-import type { DailyBar, Security } from "../../../shared/market.ts";
+import type { DailyBar, Security, ValuationPoint } from "../../../shared/market.ts";
 import type { MarketRepository, TradingDay } from "../repository/market-repository.ts";
 import { syncMarketData } from "./sync-market-data.ts";
 
@@ -50,6 +50,9 @@ const createRepository = () => {
     saveRefresh: (bars: DailyBar[], days: TradingDay[]): void => {
       saves.push({ bars, days });
     },
+    saveValuations: (): void => {},
+    latestValuationDate: (): string | undefined => undefined,
+    listValuations: (): ValuationPoint[] => [],
   };
   return { repository, saves };
 };

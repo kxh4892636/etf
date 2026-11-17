@@ -25,7 +25,8 @@ describe("MarketDashboard", () => {
       await renderWithProviders(<MarketDashboard />, client);
       await expect.poll(() => requests).toBeGreaterThan(0);
       if ("securities" in list) {
-        await expect.poll(() => requests).toBe(2);
+        // 选中标的后会同时发出日线与估值两个查询。
+        await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
         await expect.poll(bodyText).toContain("沪深300ETF · 510300");
       }
       await expect.poll(bodyText).toContain("最新收盘");
@@ -71,5 +72,18 @@ describe("MarketDashboard", () => {
     expect(bodyText()).toContain("cache · 40 条");
     await expect.element(page.getByRole("button", { name: "MA5", exact: true })).toBeVisible();
     expect(document.querySelector("canvas")).not.toBeNull();
+
+    // 页面顺序：摘要 → K 线 → 估值（估值在 K 线卡片之后，不再夹在摘要与 K 线之间）。
+    await expect.element(page.getByRole("button", { name: /市盈率/ })).toBeVisible();
+    const klineCard = [...document.querySelectorAll(".ant-card")].find(
+      (card: Element): boolean => card.querySelector(".ant-card-head-title")?.textContent === "K 线",
+    );
+    const valuationPanel = document.querySelector(".valuation-metrics");
+    expect(klineCard).not.toBeUndefined();
+    expect(valuationPanel).not.toBeNull();
+    expect(
+      (klineCard as Element).compareDocumentPosition(valuationPanel as Element) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

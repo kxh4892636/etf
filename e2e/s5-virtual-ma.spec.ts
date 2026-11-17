@@ -20,7 +20,9 @@ test("S5 用户输入虚拟均线表达式后看到虚线与 tooltip 数值", as
   await expect(page.getByRole("button", { name: "虚拟" })).toBeVisible();
 
   // hover 画布中部,tooltip 应出现"虚拟均线"行。
+  // 页面比视口高(估值区在画布下方),画布首屏不在视口内;先滚到可见,再按视口内的坐标点击。
   const canvas = page.locator("canvas");
+  await canvas.scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
   if (!box) throw new Error("canvas 不可见");
   await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.4);

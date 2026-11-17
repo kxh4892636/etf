@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vite-plus/test";
-import type { DailyBar, Security } from "../../../shared/market.ts";
+import type { DailyBar, Security, ValuationPoint } from "../../../shared/market.ts";
 import type { MarketRepository, TradingDay } from "../repository/market-repository.ts";
 import { MarketError } from "./errors.ts";
 import { createMarketService } from "./market-service.ts";
@@ -63,6 +63,9 @@ const createFakeRepository = (): MarketRepository => {
       for (const item of nextBars) bars.set(key(item.symbol, item.adjType, item.tradeDate), item);
       for (const day of nextDays) days.set([day.exchange, day.tradeDate].join("|"), day);
     },
+    saveValuations: (): void => {},
+    latestValuationDate: (): string | undefined => undefined,
+    listValuations: (): ValuationPoint[] => [],
   };
 };
 
@@ -72,6 +75,7 @@ const setup = () => {
   const service = createMarketService({
     repository,
     fetcher,
+    valuationFetcher: async (): Promise<ValuationPoint[]> => [],
     now: (): Date => new Date("2026-05-31T04:00:00Z"),
   });
   return { repository, fetcher, service };
@@ -156,6 +160,7 @@ it("上海跨日使用本地昨日", async (): Promise<void> => {
   const service = createMarketService({
     repository,
     fetcher,
+    valuationFetcher: async (): Promise<ValuationPoint[]> => [],
     now: (): Date => new Date("2026-05-29T16:00:00Z"),
   });
   expect(
@@ -172,6 +177,7 @@ it("取消发生在上游返回时也不写入", async (): Promise<void> => {
       controller.abort();
       return [bar("2026-05-29")];
     },
+    valuationFetcher: async (): Promise<ValuationPoint[]> => [],
     now: (): Date => new Date("2026-05-31T04:00:00Z"),
   });
   await expect(
@@ -186,6 +192,7 @@ it("上游业务错误保持域内错误码", async (): Promise<void> => {
     fetcher: async (): Promise<DailyBar[]> => {
       throw new MarketError("upstream_unavailable", "上游行情不可用");
     },
+    valuationFetcher: async (): Promise<ValuationPoint[]> => [],
     now: (): Date => new Date("2026-05-31T04:00:00Z"),
   });
   await expect(

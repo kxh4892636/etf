@@ -28,7 +28,9 @@ test("S6 不同 ETF 的筛选状态独立持久化并支持重置", async ({ pag
 
   const maInput = page.getByLabel("均线", { exact: true });
   const virtualInput = page.getByLabel("虚拟均线", { exact: true });
-  const selectedSegments = page.locator(".ant-segmented-item-selected");
+  // 分段控件不止一处（估值区也有范围），只读工具栏那张卡片里的选中项。
+  const toolbarCard = page.locator(".ant-card").first();
+  const selectedSegments = toolbarCard.locator(".ant-segmented-item-selected");
 
   // A（首个标的）保存自定义状态。
   await page.getByText("周", { exact: true }).click();

@@ -3,6 +3,8 @@ import type { FC, ReactElement, ReactNode } from "react";
 import { render, type RenderResult } from "vitest-browser-react";
 import { apiCode, apiFail, apiOk } from "@shared/api";
 import { formatTradeDate } from "@shared/utils/trade-date";
+import { valuationMetrics } from "@shared/market";
+import type { ValuationPoint, ValuationSeries, ValuationsResponse } from "@shared/market";
 import type { DailyBar, Security } from "../libs/api/client";
 
 import { normalizeBars, type ChartBar } from "../features/market-dashboard/chart/chart-data";
@@ -60,12 +62,51 @@ export const makeSecurity = (overrides?: Partial<Security>): Security => ({
   ...overrides,
 });
 
+const METRIC_BASE: Record<(typeof valuationMetrics)[number], { base: number; step: number }> = {
+  pe: { base: 10, step: 12 },
+  pb: { base: 1.2, step: 1.1 },
+  ps: { base: 1.5, step: 1.2 },
+  dividendYield: { base: 0.06, step: -0.02 },
+};
+
+interface MakeValuationsOptions {
+  startDate?: string;
+  /** 把分位置空，用来验证「缺分位不画线」。 */
+  dropPercentiles?: boolean;
+}
+
+/** 生成确定性的四指标估值：分位随序号从 0 线性走到 100，便于手算刻度位置。 */
+export const makeValuations = (
+  count: number,
+  options?: MakeValuationsOptions,
+): ValuationsResponse => {
+  const startMs = Date.parse(`${options?.startDate ?? "2024-01-02"}T00:00:00Z`);
+  const series: ValuationSeries[] = valuationMetrics.map(
+    (metric): ValuationSeries => {
+      const { base, step } = METRIC_BASE[metric];
+      const points: ValuationPoint[] = [];
+      for (let index = 0; index < count; index += 1) {
+        const ratio = count > 1 ? index / (count - 1) : 1;
+        points.push({
+          dataDate: formatTradeDate(startMs + index * 86_400_000),
+          value: Number((base + ratio * step).toFixed(4)),
+          percentile: options?.dropPercentiles ? null : Math.round(ratio * 10000) / 100,
+        });
+      }
+      return { metric, points, latest: points.at(-1) ?? null };
+    },
+  );
+  return { symbol: "930955.CSI", series };
+};
+
 interface MockEtfHandlers {
   securities?: Security[];
   listError?: Error;
   security?: Security | undefined;
   bars?: DailyBar[];
   barsError?: Error;
+  valuations?: ValuationsResponse;
+  valuationsError?: Error;
 }
 
 /** 在 HTTP 客户端边界返回受控响应，保留真实查询与错误处理。 */
@@ -78,6 +119,13 @@ export const createTestClient = (handlers: MockEtfHandlers): EtfClient =>
           status: 502,
         });
       return Response.json(apiOk({ securities: handlers.securities ?? [] }));
+    }
+    if (url.includes("/api/valuations")) {
+      if (handlers.valuationsError)
+        return Response.json(apiFail(apiCode.upstreamUnavailable, "上游估值不可用"), {
+          status: 502,
+        });
+      return Response.json(apiOk(handlers.valuations ?? makeValuations(12)));
     }
     if (handlers.barsError)
       return Response.json(apiFail(apiCode.upstreamUnavailable, "上游行情不可用"), {

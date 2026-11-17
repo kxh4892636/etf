@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import { sqliteTable, text, real, integer, primaryKey } from "drizzle-orm/sqlite-core";
+import { valuationMetrics } from "../../../../shared/market.ts";
 export const securities = sqliteTable("securities", {
   symbol: text("symbol").primaryKey(),
   name: text("name").notNull(),
@@ -35,4 +37,20 @@ export const tradingCalendar = sqliteTable(
     isOpen: integer("is_open").notNull(),
   },
   (table) => [primaryKey({ columns: [table.exchange, table.tradeDate] })],
+);
+
+/** 日频估值缓存：value 是统一比率，percentile 是历史分位，缺失存 NULL。 */
+export const securityValuation = sqliteTable(
+  "security_valuation",
+  {
+    symbol: text("symbol").notNull(),
+    metric: text("metric", { enum: valuationMetrics }).notNull(),
+    tradeDate: text("trade_date").notNull(),
+    value: real("value").notNull(),
+    percentile: real("percentile"),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [primaryKey({ columns: [table.symbol, table.metric, table.tradeDate] })],
 );

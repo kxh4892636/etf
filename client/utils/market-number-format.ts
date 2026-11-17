@@ -9,6 +9,18 @@ export const formatNumber = (value: number, digits: number = 2): string => {
   }).format(value);
 };
 
+/** 固定小数位：估值读数需要「22.00」而不是「22」。 */
+export const formatFixedNumber = (value: number, digits: number = 2): string => {
+  if (!Number.isFinite(value)) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("zh-CN", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+};
+
 export const formatPercent = (value: number): string =>
   Number.isFinite(value) ? `${value >= 0 ? "+" : ""}${formatNumber(value, 2)}%` : "-";
 

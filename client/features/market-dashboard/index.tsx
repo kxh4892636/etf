@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState, type FC, type ReactElement } from "react";
 import { Alert, Card, Spin, Typography } from "antd";
+import type { ValuationMetric } from "@shared/market";
 import type { Security } from "@/libs/api/client";
-import { useDailyBars, useSecurities } from "@/libs/api/use-market";
+import { useDailyBars, useSecurities, useValuation } from "@/libs/api/use-market";
 import { DashboardToolbar } from "./dashboard-toolbar";
 import { useDashboardView } from "./use-dashboard-view";
 import { KlineChart } from "./chart/kline-chart";
 import { MarketSummary } from "./market-summary";
+import { ValuationSection } from "./valuation/valuation-section";
+import { type ValuationRange } from "./valuation/valuation-series";
 import {
   aggregateBars,
   getRangeBars,
@@ -22,6 +25,7 @@ export const MarketDashboard: FC = (): ReactElement => {
   const { view, updateView, resetView } = useDashboardView(selectedSymbol);
   const securitiesQuery = useSecurities();
   const dailyBarsQuery = useDailyBars(selectedSymbol);
+  const valuationQuery = useValuation(selectedSymbol);
 
   useEffect((): void => {
     // 首屏自动选择第一个可用标的，让看板在证券列表返回后立即形成有效查询。
@@ -104,6 +108,17 @@ export const MarketDashboard: FC = (): ReactElement => {
           />
         </Spin>
       </Card>
+      <ValuationSection
+        data={valuationQuery.data}
+        // 首屏还没选中标的时查询是禁用的，别把「未查询」说成「没有估值数据」。
+        isLoading={valuationQuery.isLoading || selectedSymbol === null}
+        isFetching={valuationQuery.isFetching}
+        isError={valuationQuery.isError}
+        metric={view.valuationMetric}
+        range={view.valuationRange}
+        onSelectMetric={(valuationMetric: ValuationMetric): void => updateView({ valuationMetric })}
+        onRangeChange={(valuationRange: ValuationRange): void => updateView({ valuationRange })}
+      />
     </div>
   );
 };

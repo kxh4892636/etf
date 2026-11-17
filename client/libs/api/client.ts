@@ -20,4 +20,8 @@ export type GetDailyBarsResponse = NonNullable<
   InferResponseType<EtfClient["api"]["daily-bars"]["$get"], 200>["data"]
 >;
 
+export type GetValuationsResponse = NonNullable<
+  InferResponseType<EtfClient["api"]["valuations"]["$get"], 200>["data"]
+>;
+
 export const ApiContext = createContext<EtfClient>(createEtfClient(API_BASE_URL));

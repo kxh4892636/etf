@@ -5,6 +5,8 @@ import { openSqliteDatabase } from "./libs/sqlite/database.ts";
 import { createSqliteMarketRepository } from "./market/repository/sqlite/sqlite-market-repository.ts";
 import { createMarketService, type RemoteFetcher } from "./market/service/market-service.ts";
 import { createRemoteFetcher } from "./libs/hongsehuojian/hongsehuojian.ts";
+import { createValuationFetcher } from "./libs/hongsehuojian/valuation.ts";
+import type { RemoteValuationFetcher } from "./market/service/valuation-service.ts";
 import type { Config } from "./config.ts";
 
 export interface RunningServer {
@@ -15,10 +17,11 @@ export interface RunningServer {
 export const startServer = (
   config: Config,
   fetcher: RemoteFetcher = createRemoteFetcher(),
+  valuationFetcher: RemoteValuationFetcher = createValuationFetcher(),
 ): RunningServer => {
   const db = openSqliteDatabase(config.databaseDsn);
   const repository = createSqliteMarketRepository(db);
-  const service = createMarketService({ repository, fetcher });
+  const service = createMarketService({ repository, fetcher, valuationFetcher });
   const app = createApp(service);
   const server = serve({ fetch: app.fetch, port: config.port, hostname: "127.0.0.1" });
   let closed = false;

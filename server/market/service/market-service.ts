@@ -9,6 +9,11 @@ import { shanghaiDate } from "../../utils/dates.ts";
 import type { MarketRepository, TradingDay } from "../repository/market-repository.ts";
 import { buildTradingDays } from "./trading-days.ts";
 import { MarketError } from "./errors.ts";
+import {
+  createValuationService,
+  type RemoteValuationFetcher,
+  type ValuationService,
+} from "./valuation-service.ts";
 
 export type RemoteFetcher = (
   symbol: string,
@@ -23,7 +28,7 @@ export interface DailyBarsInput {
   endDate?: string | undefined;
 }
 
-export interface MarketService {
+export interface MarketService extends ValuationService {
   listSecurities: () => Security[];
   getDailyBars: (input: DailyBarsInput, signal?: AbortSignal) => Promise<DailyBarsResponse>;
 }
@@ -31,6 +36,7 @@ export interface MarketService {
 export interface MarketServiceDependencies {
   repository: MarketRepository;
   fetcher: RemoteFetcher;
+  valuationFetcher: RemoteValuationFetcher;
   now?: () => Date;
 }
 
@@ -38,8 +44,14 @@ export const createMarketService = (deps: MarketServiceDependencies): MarketServ
   const repository = deps.repository;
   const fetcher = deps.fetcher;
   const now = deps.now ?? ((): Date => new Date());
+  const valuations = createValuationService({
+    repository,
+    fetcher: deps.valuationFetcher,
+    now,
+  });
   return {
     listSecurities: (): Security[] => repository.listSecurities(),
+    getValuations: valuations.getValuations,
     getDailyBars: async (
       input: DailyBarsInput,
       signal?: AbortSignal,

@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
     "typecheck:e2e": "tsc -p e2e/tsconfig.json",
-    "sync:market": "node --experimental-strip-types server/sync-market.ts"
+    "sync:market": "node --experimental-strip-types server/sync-market.ts",
+    "sync:valuation": "node --experimental-strip-types server/sync-valuation.ts"
   },
   "dependencies": {
     "@ant-design/cssinjs": "^2.1.2",

@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { ZodError } from "zod";
 import { apiCode } from "../../../shared/api.ts";
-import type { DailyBarsResponse, Security } from "../../../shared/market.ts";
+import {
+  valuationMetrics,
+  type DailyBarsResponse,
+  type Security,
+  type ValuationsResponse,
+} from "../../../shared/market.ts";
 import { createApp } from "../../app.ts";
 import { MarketError } from "../service/errors.ts";
 import type { MarketService } from "../service/market-service.ts";
@@ -29,9 +34,19 @@ const response: DailyBarsResponse = {
   },
 };
 
+const valuations: ValuationsResponse = {
+  symbol: security.symbol,
+  series: valuationMetrics.map((metric) => ({
+    metric,
+    points: [{ dataDate: "2026-11-13", value: 1, percentile: 12 }],
+    latest: { dataDate: "2026-11-13", value: 1, percentile: 12 },
+  })),
+};
+
 const createService = (overrides: Partial<MarketService> = {}): MarketService => ({
   listSecurities: (): Security[] => [security],
   getDailyBars: async (): Promise<DailyBarsResponse> => response,
+  getValuations: async (): Promise<ValuationsResponse> => valuations,
   ...overrides,
 });
 
@@ -118,6 +133,45 @@ describe("HTTP 控制层", (): void => {
     expect(result.status).toBe(400);
     expect((await result.json()).code).toBe(apiCode.invalidArgument);
     expect(getDailyBars).not.toHaveBeenCalled();
+  });
+  it("估值查询返回四个指标的成功结构", async (): Promise<void> => {
+    const result = await createApp(createService()).request("/api/valuations?symbol=932315.CSI");
+    expect(result.status).toBe(200);
+    expect(await result.json()).toEqual({
+      code: apiCode.ok,
+      message: "ok",
+      extra: {},
+      data: valuations,
+    });
+  });
+  it.each(["", "symbol=", "symbol=%20"])("拒绝错误估值参数 %s", async (query): Promise<void> => {
+    const getValuations = vi.fn(async (): Promise<ValuationsResponse> => valuations);
+    const result = await createApp(createService({ getValuations })).request(
+      "/api/valuations?" + query,
+    );
+    expect(result.status).toBe(400);
+    expect(await result.json()).toEqual({
+      code: apiCode.invalidArgument,
+      message: "请求参数无效",
+      extra: {},
+      data: null,
+    });
+    expect(getValuations).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["not_found", "证券没有估值数据", 404, apiCode.notFound],
+    ["upstream_unavailable", "上游估值不可用", 502, apiCode.upstreamUnavailable],
+    ["deadline_exceeded", "上游请求超时", 504, apiCode.deadlineExceeded],
+  ] as const)("估值失败映射为 %s", async (errorCode, message, status, code): Promise<void> => {
+    const result = await createApp(
+      createService({
+        getValuations: async (): Promise<ValuationsResponse> => {
+          throw new MarketError(errorCode, message);
+        },
+      }),
+    ).request("/api/valuations?symbol=932315.CSI");
+    expect(result.status).toBe(status);
+    expect(await result.json()).toEqual({ code, message, extra: {}, data: null });
   });
   it("请求取消返回 408 与 canceled 业务码", async (): Promise<void> => {
     const controller = new AbortController();

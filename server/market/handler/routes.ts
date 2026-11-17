@@ -22,6 +22,10 @@ export const dailyBarsRequest = z
     "起点不能晚于终点",
   );
 
+export const valuationsRequest = z.object({
+  symbol: z.string().trim().min(1),
+});
+
 export const createMarketHandler = (service: MarketService) =>
   new Hono()
     .get("/securities", (c) => c.json(apiOk({ securities: service.listSecurities() }), 200))
@@ -30,4 +34,10 @@ export const createMarketHandler = (service: MarketService) =>
       validator("query", (value) => dailyBarsRequest.parse(value)),
       async (c) =>
         c.json(apiOk(await service.getDailyBars(c.req.valid("query"), c.req.raw.signal)), 200),
+    )
+    .get(
+      "/valuations",
+      validator("query", (value) => valuationsRequest.parse(value)),
+      async (c) =>
+        c.json(apiOk(await service.getValuations(c.req.valid("query"), c.req.raw.signal)), 200),
     );

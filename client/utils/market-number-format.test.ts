@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { formatLargeNumber, formatNumber, formatPercent } from "./market-number-format";
+import {
+  formatFixedNumber,
+  formatLargeNumber,
+  formatNumber,
+  formatPercent,
+} from "./market-number-format";
 
 describe("formatNumber", () => {
   it("非有限值返回占位符", () => {
@@ -27,6 +32,19 @@ describe("formatNumber", () => {
     expect(formatNumber(1234.567, 2)).toBe("1,234.57");
     expect(formatNumber(1234.567, 0)).toBe("1,235");
     expect(formatNumber(1.23456, 4)).toBe("1.2346");
+  });
+});
+
+describe("formatFixedNumber", () => {
+  it("固定补足小数位，整数也带两位", () => {
+    expect(formatFixedNumber(22)).toBe("22.00");
+    expect(formatFixedNumber(4.47)).toBe("4.47");
+    expect(formatFixedNumber(1234.5)).toBe("1,234.50");
+  });
+
+  it("非有限值返回占位符", () => {
+    expect(formatFixedNumber(Number.NaN)).toBe("-");
+    expect(formatFixedNumber(Number.POSITIVE_INFINITY)).toBe("-");
   });
 });
 

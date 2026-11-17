@@ -1,0 +1,107 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Terrazzo (deal 1/3)
+ * nav: kept, the existing antd header bar · signature: 四项估值读在一条 0–100 分位刻度上 · states: loading, empty, error, full
+ * axes: light/geometric-sans/warm · posture: restrained
+ * contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E5 S4 R4 V3 · weakest: V, the card's place and chrome are fixed by the page it joins; took the spec-sheet register (mono figures, hairline rules, a 2×2 readout instead of four stat tiles) so it reads as a measurement sheet, not a fifth card of the same shape */
+/* Hallmark · finish-review: in-thread · 3 findings · 2 resolved 1 answered · gap: none · 0 FAIL 0 REFLEX 0 WARN (sloplint --render --url, scope app, 8 files) */
+
+:root {
+  color-scheme: light;
+
+  /* 纸与墨：与看板既有的冷灰底（#f4f6f8）和 slate 边框对齐，卡片落在白色面板上 */
+  --color-paper: oklch(99% 0.003 250);
+  --color-paper-2: oklch(96.5% 0.006 250);
+  --color-ink: oklch(26% 0.025 252);
+  --color-ink-2: oklch(38% 0.02 250);
+  --color-muted: oklch(48% 0.018 250);
+  --color-rule: oklch(91% 0.008 250);
+  --color-rule-strong: oklch(82% 0.012 250);
+  /* 输入框边界要 ≥3:1，antd 默认的 #d9d9d9 只有 1.4:1 */
+  --color-field-edge: oklch(58% 0.015 250);
+
+  /* 信号：锈色只出现在焦点环与选中态，不当填充色 */
+  --color-accent: oklch(50% 0.14 38);
+  --color-accent-ink: oklch(99% 0.004 40);
+  --color-focus: oklch(48% 0.16 38);
+
+  /* 四个指标：同一锈相上的一条亮度阶梯，不与 MA 调色板混用，也不用涨红跌绿 */
+  --val-pe: oklch(33% 0.115 38);
+  --val-pb: oklch(45% 0.145 39);
+  --val-ps: oklch(58% 0.12 42);
+  --val-dividend: oklch(71% 0.085 46);
+  --val-scale-track: oklch(92% 0.008 250);
+  --val-scale-fill: oklch(46% 0.015 250);
+
+  /* 字体：沿用项目的系统栈；等宽只给数字、日期与单位 */
+  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --font-measure: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* 4pt 间距阶梯与形状 */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --radius-control: 4px;
+  --radius-card: 8px;
+
+  /* 动效：只给按下与悬停，不做编排 */
+  --dur-micro: 120ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* 字号：沿用既有 12/14/16/20 阶梯 */
+  --text-label: 0.75rem;
+  --text-body: 0.875rem;
+  --text-title: 1rem;
+  --text-value: 1.25rem;
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-accent) 22%, transparent);
+}
+
+/* antd 控件补齐：输入边界到 3:1，Segmented 的焦点环换成项目焦点色，
+   内层输入与图例按钮补到 app 的 32px 命中高度。这些值只在静息态覆盖，
+   悬停与聚焦仍由 antd 自己表达。 */
+.ant-input:not(:focus):not(:hover),
+.ant-btn-default:not(:focus-visible):not(:hover) {
+  border-color: var(--color-field-edge);
+}
+
+.ant-select:not(:hover):not(.ant-select-focused),
+.ant-select:not(:hover):not(.ant-select-focused) .ant-select-selector {
+  border-color: var(--color-field-edge);
+}
+
+.ant-select .ant-select-input {
+  height: 30px;
+}
+
+.ant-segmented .ant-segmented-item-focused {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.ma-legend button {
+  min-height: 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms;
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
+}

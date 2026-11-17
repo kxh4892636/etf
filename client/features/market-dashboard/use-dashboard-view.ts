@@ -1,3 +1,4 @@
+import type { ValuationMetric } from "@shared/market";
 import { useEffect, useState } from "react";
 import {
   PERIOD_OPTIONS,
@@ -5,6 +6,12 @@ import {
   type ChartPeriod,
   type ChartRange,
 } from "./chart/chart-data";
+import {
+  DEFAULT_VALUATION_METRIC,
+  isValuationRange,
+  parseValuationMetric,
+  type ValuationRange,
+} from "./valuation/valuation-series";
 
 export const DASHBOARD_VIEW_STORAGE_KEY = "etf:dashboard:views:v1";
 
@@ -13,6 +20,10 @@ export interface DashboardView {
   range: ChartRange;
   maText: string;
   virtualMaText: string;
+  /** 下方分位折线画哪个指标；单选，默认市盈率。 */
+  valuationMetric: ValuationMetric;
+  /** 估值曲线的独立范围，与 K 线周期无关。 */
+  valuationRange: ValuationRange;
 }
 
 export interface DashboardViewStore {
@@ -25,6 +36,8 @@ export const DEFAULT_DASHBOARD_VIEW: DashboardView = {
   range: "all",
   maText: "5 8 13 21 34 55",
   virtualMaText: "",
+  valuationMetric: DEFAULT_VALUATION_METRIC,
+  valuationRange: "all",
 };
 
 const PERIOD_VALUES = new Set<string>(PERIOD_OPTIONS.map((option): ChartPeriod => option.value));
@@ -55,6 +68,14 @@ export const parseDashboardView = (value: unknown): DashboardView => {
       typeof value["virtualMaText"] === "string"
         ? value["virtualMaText"]
         : DEFAULT_DASHBOARD_VIEW.virtualMaText,
+    // 旧版本存储没有这两个字段，或只有旧版「可见指标集合」，都逐项回退默认，不阻断整条记录。
+    valuationMetric: parseValuationMetric(
+      value["valuationMetric"],
+      DEFAULT_DASHBOARD_VIEW.valuationMetric,
+    ),
+    valuationRange: isValuationRange(value["valuationRange"])
+      ? value["valuationRange"]
+      : DEFAULT_DASHBOARD_VIEW.valuationRange,
   };
 };
 

@@ -18,7 +18,7 @@ export const MaLegend: FC<MaLegendProps> = (props: MaLegendProps): ReactElement 
   const { series, hiddenPeriods, onToggle, virtualMa } = props;
 
   return (
-    <div className="flex flex-wrap gap-2 border-t border-slate-100 px-3 py-2">
+    <div className="ma-legend flex flex-wrap gap-2 border-t border-slate-100 px-3 py-2">
       {series.map((maSeries: MaSeries): ReactElement => (
         <button
           key={maSeries.period}

@@ -10,7 +10,7 @@ interface FetchOptions {
   timeoutMs?: number;
 }
 const FULL_HISTORY_COUNT = "-10000";
-const limitedJson = async (response: Response): Promise<unknown> => {
+export const limitedJson = async (response: Response): Promise<unknown> => {
   if (!response.body) throw new Error("上游响应为空");
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];

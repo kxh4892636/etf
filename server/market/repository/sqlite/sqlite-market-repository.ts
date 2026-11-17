@@ -1,9 +1,14 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
-import type { DailyBar, Security } from "../../../../shared/market.ts";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import type {
+  DailyBar,
+  Security,
+  ValuationMetric,
+  ValuationPoint,
+} from "../../../../shared/market.ts";
 import type { SqliteDatabase } from "../../../libs/sqlite/database.ts";
-import type { MarketRepository, TradingDay } from "../market-repository.ts";
+import type { MarketRepository, TradingDay, ValuationRecord } from "../market-repository.ts";
 import { supportedSecurities } from "../securities.ts";
-import { dailyBars, securities, tradingCalendar } from "./schema.ts";
+import { dailyBars, securities, securityValuation, tradingCalendar } from "./schema.ts";
 
 const seed = (db: SqliteDatabase): void => {
   db.transaction((tx): void => {
@@ -65,6 +70,57 @@ export const createSqliteMarketRepository = (db: SqliteDatabase): MarketReposito
           ),
         )
         .all(),
+    latestValuationDate: (symbol: string): string | undefined =>
+      db
+        .select({ date: securityValuation.tradeDate })
+        .from(securityValuation)
+        .where(eq(securityValuation.symbol, symbol))
+        .orderBy(desc(securityValuation.tradeDate))
+        .limit(1)
+        .get()?.date,
+    listValuations: (
+      symbol: string,
+      metric: ValuationMetric,
+      start: string,
+      end: string,
+    ): ValuationPoint[] =>
+      db
+        .select({
+          dataDate: securityValuation.tradeDate,
+          value: securityValuation.value,
+          percentile: securityValuation.percentile,
+        })
+        .from(securityValuation)
+        .where(
+          and(
+            eq(securityValuation.symbol, symbol),
+            eq(securityValuation.metric, metric),
+            gte(securityValuation.tradeDate, start),
+            lte(securityValuation.tradeDate, end),
+          ),
+        )
+        .orderBy(securityValuation.tradeDate)
+        .all(),
+    saveValuations: (records: ValuationRecord[]): void => {
+      db.transaction((tx): void => {
+        for (const record of records)
+          tx.insert(securityValuation)
+            .values(record)
+            .onConflictDoUpdate({
+              target: [
+                securityValuation.symbol,
+                securityValuation.metric,
+                securityValuation.tradeDate,
+              ],
+              set: {
+                value: record.value,
+                percentile: record.percentile,
+                updatedAt: sql`CURRENT_TIMESTAMP`,
+              },
+            })
+            .run();
+      });
+    },
     saveRefresh: (bars: DailyBar[], days: TradingDay[]): void => {
       db.transaction((tx): void => {
         // 事务保证整批 upsert 一次提交，日线和日历不会部分写入。
