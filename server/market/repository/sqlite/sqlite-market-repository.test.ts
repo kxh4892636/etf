@@ -40,31 +40,30 @@ afterEach((): void => {
 });
 
 describe("SQLite 仓储", (): void => {
-  it("迁移幂等、重启保留证券并按代码排序", (): void => {
+  it("迁移幂等、重启保留证券并按加入顺序列出", (): void => {
     const file = path.join(temp(), "nested", "db.sqlite");
     for (let index = 0; index < 2; index++) {
       const db = openSqliteDatabase(file);
       try {
-        expect(createSqliteMarketRepository(db).listSecurities()).toEqual([
-          {
-            symbol: "930955.CSI",
-            name: "红利低波100",
-            assetType: "index",
-            exchange: "CSI",
-            currency: "CNY",
-            source: "hongsehuojian",
-            earliestTradeDate: "2005-12-30",
-          },
-          {
-            symbol: "932315.CSI",
-            name: "中证红利质量",
-            assetType: "index",
-            exchange: "CSI",
-            currency: "CNY",
-            source: "hongsehuojian",
-            earliestTradeDate: "2013-12-31",
-          },
+        const listed = createSqliteMarketRepository(db).listSecurities();
+        expect(listed.map((security): string => security.symbol)).toEqual([
+          "930955.CSI",
+          "932315.CSI",
+          "932422.CSI",
+          "399989.SZ",
+          "931643.CSI",
         ]);
+        expect(listed[0]).toEqual({
+          symbol: "930955.CSI",
+          name: "红利低波100",
+          assetType: "index",
+          exchange: "CSI",
+          currency: "CNY",
+          source: "hongsehuojian",
+          earliestTradeDate: "2005-12-30",
+        });
+        expect(listed[4]).toMatchObject({ symbol: "931643.CSI", exchange: "CSI" });
+        expect(listed[3]).toMatchObject({ symbol: "399989.SZ", exchange: "SZ" });
       } finally {
         db.$client.close();
       }
@@ -79,7 +78,7 @@ describe("SQLite 仓储", (): void => {
         throw new Error("rollback");
       }),
     ).toThrow("rollback");
-    expect(repository.listSecurities()).toHaveLength(2);
+    expect(repository.listSecurities()).toHaveLength(5);
   });
   it("数据库损坏时拒绝启动并释放句柄", (): void => {
     const file = path.join(temp(), "broken.sqlite");

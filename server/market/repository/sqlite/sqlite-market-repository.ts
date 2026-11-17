@@ -10,6 +10,12 @@ import type { MarketRepository, TradingDay, ValuationRecord } from "../market-re
 import { supportedSecurities } from "../securities.ts";
 import { dailyBars, securities, securityValuation, tradingCalendar } from "./schema.ts";
 
+/** 加入顺序取证券目录顺序：老库的 rowid 是历史插入顺序，与目录顺序未必一致，不能用来排序。 */
+const addedOrder = new Map(
+  supportedSecurities.map(({ symbol }, index): [string, number] => [symbol, index]),
+);
+const orderOf = (symbol: string): number => addedOrder.get(symbol) ?? Number.MAX_SAFE_INTEGER;
+
 const seed = (db: SqliteDatabase): void => {
   db.transaction((tx): void => {
     for (const definition of supportedSecurities)
@@ -36,12 +42,12 @@ export const createSqliteMarketRepository = (db: SqliteDatabase): MarketReposito
       db
         .select()
         .from(securities)
-        .orderBy(securities.symbol)
         .all()
         .map((security): Security => ({
           ...security,
           latestCachedTradeDate: latestDate(security.symbol, "qfq"),
-        })),
+        }))
+        .sort((left, right): number => orderOf(left.symbol) - orderOf(right.symbol)),
     findSecurity: (symbol: string): Security | undefined =>
       db.select().from(securities).where(eq(securities.symbol, symbol)).get(),
     listBars: (symbol: string, adjType: string, start: string, end: string): DailyBar[] =>

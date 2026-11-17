@@ -47,7 +47,7 @@ interface ApiResponse<T> {
 
 - 成功：`code = 0`，`data` 为业务载荷。
 - 失败：`data = null`，`code` 为业务码（1001 参数无效、1002 资源不存在、1003 取消、1004 内部、1005 上游不可用、1006 上游超时、1007 路由不存在），HTTP 状态由 Hono 单独返回。
-- `GET /` 健康检查；`GET /api/securities` 证券目录；`GET /api/daily-bars?symbol=...` 前复权日线，另支持 `adjType=qfq`、`startDate`、`endDate`。
+- `GET /` 健康检查；`GET /api/securities` 证券目录，按目录（加入）顺序返回，首个是默认标的红利低波100；`GET /api/daily-bars?symbol=...` 前复权日线，另支持 `adjType=qfq`、`startDate`、`endDate`。
 - `GET /api/valuations?symbol=...` 四个估值指标的完整序列与最新值，`data.series` 恒含 `pe`/`pb`/`ps`/`dividendYield` 四项（顺序固定），每项为 `{ metric, points, latest }`；点形如 `{ dataDate, value, percentile }`。
 
 ## 看板状态
@@ -70,12 +70,12 @@ pnpm --filter @kxh4892636/etf run build     # dist/client + dist/server + dist/s
 pnpm --filter @kxh4892636/etf run start     # node dist/server/main.js
 pnpm --filter @kxh4892636/etf run test:coverage
 pnpm --filter @kxh4892636/etf run test:e2e
-pnpm --filter @kxh4892636/etf run sync:market       # 全量同步两个证券历史日线
+pnpm --filter @kxh4892636/etf run sync:market       # 全量同步目录内五个证券的历史日线
 pnpm --filter @kxh4892636/etf run sync:valuation    # 全量回填四个估值指标历史
 pnpm --filter @kxh4892636/etf run db:generate
 ```
 
-**日线**：`sync:market` 遍历证券目录，按上游 `count=-10000` 拉取全量、裁剪到上海昨日，事务写入 `daily_bars` 与 `trading_calendar` 并输出覆盖摘要；首次预填或缓存范围偏短时执行。当前两个证券的全量约为 3108 / 5048 根，详见 [行情全量同步工作流](../../.agents/domains/etf/workflows/001-行情全量同步/001-行情全量同步.md)。
+**日线**：`sync:market` 遍历证券目录，按上游 `count=-10000` 拉取全量、裁剪到上海昨日，事务写入 `daily_bars` 与 `trading_calendar` 并输出覆盖摘要；首次预填或缓存范围偏短时执行。当前五个证券的全量在 1665–5312 根之间（合计 18304 根），详见 [行情全量同步工作流](../../.agents/domains/etf/workflows/001-行情全量同步/001-行情全量同步.md)。
 
 **估值**：`sync:valuation` 逐证券、逐指标请求上游 `/fundex-quote/index/valuation`（`timeInterval=max`，即上市起全部历史），整批 upsert 到 `security_valuation`（长表，迁移 0002）。查询 `GET /api/valuations` 时，若缓存最新日期早于应有工作日，会再拉一次全量补最新值（同一证券 10 分钟内只补拉一次，避免节假日或上游延迟时每次请求都重下四份全历史）；上游失败但已有缓存时退回缓存，没有缓存才报 1005/1006。估值按工作日发布，卡片右上角「口径日期」取数据日期（`dataDate`），不借行情最新日期。
 
